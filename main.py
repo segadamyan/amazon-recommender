@@ -19,16 +19,16 @@ MODEL_PATH = os.path.join(".", "model", "recommendation_model")
 USER_CLUSTERS_PATH = os.path.join(".", "data", "user_clusters")
 
 
+# Before running this script you need to create data folder and download data from
+# https://cseweb.ucsd.edu/~jmcauley/datasets/amazon_v2/
+# Also make sure you have jvm installed
 def main():
     print("Starting Beauty Product Recommendation System")
     start_time = time.time()
 
-    spark = (SparkSession.builder
-             .appName("Advanced_Beauty_Recommendation")
-             .getOrCreate())
+    spark = SparkSession.builder.appName("Advanced_Beauty_Recommendation").getOrCreate()
 
     spark.conf.set("spark.sql.adaptive.enabled", "true")
-
     data_processor = DataProcessor(spark)
     feature_engineer = FeatureEngineer(spark)
     model_trainer = ModelTrainer(spark)
@@ -37,6 +37,7 @@ def main():
     clusterer = UserClusterer(spark)
 
     print("Loading and preprocessing data...")
+    print(DATA_PATH)
     df_raw = spark.read.json(DATA_PATH)
     df_processed = data_processor.process_data(df_raw)
 

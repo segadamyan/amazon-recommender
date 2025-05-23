@@ -29,7 +29,6 @@ class FeatureEngineer:
         df = df.join(user_engagement, on="reviewerID", how="left")
 
         # Calculate Z-score for each rating to identify unusual ratings
-        window_user = Window.partitionBy("reviewerID")
         df = df.withColumn("user_zscore",
                            (col("rating") - col("user_avg_rating")) /
                            when(col("user_rating_stddev").isNull() | (col("user_rating_stddev") == 0), 1)
