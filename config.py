@@ -15,22 +15,13 @@ DEFAULT_ALS_PARAMS = {
     "maxIter": 10,
     "alpha": 1.0,
     "nonnegative": True,
-    "coldStartStrategy": "drop"
+    "coldStartStrategy": "drop",
 }
 
 TRAIN_SPLIT = 0.7
 VALIDATION_SPLIT = 0.15
 TEST_SPLIT = 0.15
 RANDOM_SEED = 42
-
-SENTIMENT_POSITIVE_WORDS = [
-    "great", "good", "excellent", "amazing", "love",
-    "perfect", "best", "beautiful", "fantastic", "awesome"
-]
-SENTIMENT_NEGATIVE_WORDS = [
-    "bad", "poor", "terrible", "worst", "hate",
-    "disappointing", "awful", "horrible", "waste", "useless"
-]
 
 EVALUATION_METRICS = ["rmse", "mae"]
 

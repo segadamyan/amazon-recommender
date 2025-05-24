@@ -12,33 +12,41 @@ from recommendation_generator import RecommendationGenerator
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description="Beauty Product Recommendation System")
-    parser.add_argument("--mode", choices=["train", "recommend", "evaluate"],
-                        default="train", help="Operation mode")
-    parser.add_argument("--data_path", default=cfg.RAW_DATA_PATH,
-                        help="Path to input data")
-    parser.add_argument("--model_path", default=cfg.MODEL_PATH,
-                        help="Path to save/load model")
-    parser.add_argument("--user_id",
-                        help="User ID for recommendations (required in recommend mode)")
-    parser.add_argument("--num_recs", type=int, default=10,
-                        help="Number of recommendations to generate")
+    parser.add_argument(
+        "--mode",
+        choices=["train", "recommend", "evaluate"],
+        default="train",
+        help="Operation mode",
+    )
+    parser.add_argument(
+        "--data_path", default=cfg.RAW_DATA_PATH, help="Path to input data"
+    )
+    parser.add_argument(
+        "--model_path", default=cfg.MODEL_PATH, help="Path to save/load model"
+    )
+    parser.add_argument(
+        "--user_id", help="User ID for recommendations (required in recommend mode)"
+    )
+    parser.add_argument(
+        "--num_recs", type=int, default=10, help="Number of recommendations to generate"
+    )
     return parser.parse_args()
 
 
 def init_spark():
     """Initialize Spark session"""
-    return (SparkSession.builder
-            .appName("Beauty_Recommendation_System")
-            .config("spark.executor.memory", "4g")
-            .config("spark.driver.memory", "4g")
-            .getOrCreate())
+    return (
+        SparkSession.builder.appName("Beauty_Recommendation_System")
+        .config("spark.executor.memory", "4g")
+        .config("spark.driver.memory", "4g")
+        .getOrCreate()
+    )
 
 
 def train_model(spark, data_path, model_path):
     """Train a new recommendation model"""
     from data_processor import DataProcessor
     from feature_engineering import FeatureEngineer
-
 
     processor = DataProcessor(spark)
     engineer = FeatureEngineer(spark)
@@ -51,8 +59,7 @@ def train_model(spark, data_path, model_path):
     indexed_df = engineer.index_features(df_features)
 
     train, validation, test = indexed_df.randomSplit(
-        [cfg.TRAIN_SPLIT, cfg.VALIDATION_SPLIT, cfg.TEST_SPLIT],
-        seed=cfg.RANDOM_SEED
+        [cfg.TRAIN_SPLIT, cfg.VALIDATION_SPLIT, cfg.TEST_SPLIT], seed=cfg.RANDOM_SEED
     )
 
     print("Training recommendation model...")
@@ -78,7 +85,9 @@ def recommend(spark, model_path, user_id, num_recs):
 
     try:
         user_id_num = float(user_id)
-        recs = recommender.get_personalized_recommendations(model, user_id_num, df, num_recs)
+        recs = recommender.get_personalized_recommendations(
+            model, user_id_num, df, num_recs
+        )
     except ValueError:
         user_mapping = df.filter(df.reviewerID == user_id).select("userId").limit(1)
 
@@ -87,7 +96,9 @@ def recommend(spark, model_path, user_id, num_recs):
             return None
 
         user_id_num = user_mapping.first()["userId"]
-        recs = recommender.get_personalized_recommendations(model, user_id_num, df, num_recs)
+        recs = recommender.get_personalized_recommendations(
+            model, user_id_num, df, num_recs
+        )
 
     if recs is not None:
         id_mapping = df.select("itemId", "asin").distinct()

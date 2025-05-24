@@ -9,15 +9,17 @@ class RecommendationGenerator:
     def generate_sample_recommendations(self, model, df):
         """Generate recommendations for sample users"""
 
-        active_users = df.groupBy("userId") \
-            .agg(count("rating").alias("review_count")) \
-            .orderBy(col("review_count").desc()) \
+        active_users = (
+            df.groupBy("userId")
+            .agg(count("rating").alias("review_count"))
+            .orderBy(col("review_count").desc())
             .limit(5)
+        )
 
         active_user_ids = [row["userId"] for row in active_users.collect()]
         user_recs = model.recommendForUserSubset(
             df.select("userId").filter(col("userId").isin(active_user_ids)).distinct(),
-            10
+            10,
         )
 
         print("\nSample Recommendations for Active Users:")
@@ -34,7 +36,9 @@ class RecommendationGenerator:
         for user_rec in user_recs.collect():
             user_id = user_rec["userId"]
             items = user_rec["recommendations"]
-            product_ids = [item_to_product.get(item["itemId"], "unknown") for item in items]
+            product_ids = [
+                item_to_product.get(item["itemId"], "unknown") for item in items
+            ]
             print(f"User {user_id}: {product_ids[:3]} ...")
 
         return user_recs
@@ -42,18 +46,22 @@ class RecommendationGenerator:
     def get_top_items(self, df, n=10):
         """Get top rated items for cold-start scenarios"""
 
-        item_avgs = df.groupBy("itemId", "asin") \
+        item_avgs = (
+            df.groupBy("itemId", "asin")
             .agg(
-            avg("weighted_rating").alias("avg_rating"),
-            count("rating").alias("count")
-        ) \
-            .filter(col("count") > 5) \
-            .orderBy(col("avg_rating").desc()) \
+                avg("weighted_rating").alias("avg_rating"),
+                count("rating").alias("count"),
+            )
+            .filter(col("count") > 5)
+            .orderBy(col("avg_rating").desc())
             .limit(n)
+        )
 
         print("\nTop Items for Cold-Start Users:")
         for item in item_avgs.collect():
-            print(f"Item {item['asin']}: Average Rating = {item['avg_rating']:.2f} (from {item['count']} reviews)")
+            print(
+                f"Item {item['asin']}: Average Rating = {item['avg_rating']:.2f} (from {item['count']} reviews)"
+            )
 
         return item_avgs
 
@@ -66,16 +74,27 @@ class RecommendationGenerator:
 
         print(f"\nReal-time recommendations for user {user_original_id}:")
 
-        user_items = set([row["itemId"] for row in df.filter(col("userId") == user_id).select("itemId").collect()])
-        all_items = set([row["itemId"] for row in df.select("itemId").distinct().limit(1000).collect()])
+        user_items = set(
+            [
+                row["itemId"]
+                for row in df.filter(col("userId") == user_id)
+                .select("itemId")
+                .collect()
+            ]
+        )
+        all_items = set(
+            [
+                row["itemId"]
+                for row in df.select("itemId").distinct().limit(1000).collect()
+            ]
+        )
         candidate_items = list(all_items - user_items)
 
         if len(candidate_items) > 100:
             candidate_items = candidate_items[:100]
 
         predict_df = self.spark.createDataFrame(
-            [(user_id, item_id) for item_id in candidate_items],
-            ["userId", "itemId"]
+            [(user_id, item_id) for item_id in candidate_items], ["userId", "itemId"]
         )
 
         predictions = model.transform(predict_df)
@@ -100,13 +119,16 @@ class RecommendationGenerator:
             print(f"User {user_id} not found.")
             return None
 
-        user_items = set([row["itemId"] for row in user_features.select("itemId").collect()])
-        all_items = set([row["itemId"] for row in df.select("itemId").distinct().collect()])
+        user_items = set(
+            [row["itemId"] for row in user_features.select("itemId").collect()]
+        )
+        all_items = set(
+            [row["itemId"] for row in df.select("itemId").distinct().collect()]
+        )
         candidate_items = list(all_items - user_items)
 
         predict_df = self.spark.createDataFrame(
-            [(user_id, item_id) for item_id in candidate_items],
-            ["userId", "itemId"]
+            [(user_id, item_id) for item_id in candidate_items], ["userId", "itemId"]
         )
 
         predictions = model.transform(predict_df)

@@ -1,4 +1,11 @@
-from pyspark.sql.functions import col, length, from_unixtime, datediff, current_date, when
+from pyspark.sql.functions import (
+    col,
+    length,
+    from_unixtime,
+    datediff,
+    current_date,
+    when,
+)
 
 
 class DataProcessor:
@@ -15,17 +22,21 @@ class DataProcessor:
             "reviewText",
             "summary",
             "unixReviewTime",
-            "verified"
+            "verified",
         )
 
         df = df.filter(df.reviewText.isNotNull() & (length(df.reviewText) > 5))
 
-        df = df.withColumn("reviewDate", from_unixtime(col("unixReviewTime")).cast("date"))
+        df = df.withColumn(
+            "reviewDate", from_unixtime(col("unixReviewTime")).cast("date")
+        )
 
         df = df.withColumn("recency", datediff(current_date(), col("reviewDate")))
 
         df = df.withColumn("verified", col("verified").cast("boolean"))
-        df = df.withColumn("verified_weight", when(col("verified") == True, 1.2).otherwise(0.8))
+        df = df.withColumn(
+            "verified_weight", when(col("verified") == True, 1.2).otherwise(0.8)
+        )
 
         df = df.withColumn("weighted_rating", col("rating") * col("verified_weight"))
 
@@ -35,8 +46,24 @@ class DataProcessor:
     def analyze_review_text(self, df):
         df = df.withColumn("review_length", length(col("reviewText")))
 
-        positive_words = ["great", "good", "excellent", "amazing", "love", "perfect", "best"]
-        negative_words = ["bad", "poor", "terrible", "worst", "hate", "disappointing", "awful"]
+        positive_words = [
+            "great",
+            "good",
+            "excellent",
+            "amazing",
+            "love",
+            "perfect",
+            "best",
+        ]
+        negative_words = [
+            "bad",
+            "poor",
+            "terrible",
+            "worst",
+            "hate",
+            "disappointing",
+            "awful",
+        ]
 
         from pyspark.sql.types import FloatType
         from pyspark.sql.functions import udf

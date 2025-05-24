@@ -13,16 +13,12 @@ class ModelEvaluator:
         predictions = model.transform(test)
 
         evaluator = RegressionEvaluator(
-            metricName="rmse",
-            labelCol="weighted_rating",
-            predictionCol="prediction"
+            metricName="rmse", labelCol="weighted_rating", predictionCol="prediction"
         )
         rmse = evaluator.evaluate(predictions)
 
         evaluator = RegressionEvaluator(
-            metricName="mae",
-            labelCol="weighted_rating",
-            predictionCol="prediction"
+            metricName="mae", labelCol="weighted_rating", predictionCol="prediction"
         )
         mae = evaluator.evaluate(predictions)
 
@@ -32,7 +28,9 @@ class ModelEvaluator:
 
         k_predictions = predictions.withColumn(
             "correct_prediction",
-            when((col("prediction") >= 4.0) & (col("weighted_rating") >= 4.0), 1.0).otherwise(0.0)
+            when(
+                (col("prediction") >= 4.0) & (col("weighted_rating") >= 4.0), 1.0
+            ).otherwise(0.0),
         )
 
         precision = k_predictions.agg(avg("correct_prediction")).first()[0]
@@ -48,14 +46,20 @@ class ModelEvaluator:
     def evaluate_by_user_group(self, model, test):
         """Evaluate model performance across different user segments"""
 
-        user_activity = test.groupBy("userId").count().withColumn(
-            "activity_level",
-            when(col("count") < 5, "low")
-            .when(col("count") < 20, "medium")
-            .otherwise("high")
+        user_activity = (
+            test.groupBy("userId")
+            .count()
+            .withColumn(
+                "activity_level",
+                when(col("count") < 5, "low")
+                .when(col("count") < 20, "medium")
+                .otherwise("high"),
+            )
         )
 
-        test_with_activity = test.join(user_activity.select("userId", "activity_level"), on="userId")
+        test_with_activity = test.join(
+            user_activity.select("userId", "activity_level"), on="userId"
+        )
 
         predictions = model.transform(test_with_activity)
 
@@ -68,13 +72,15 @@ class ModelEvaluator:
                 evaluator = RegressionEvaluator(
                     metricName="rmse",
                     labelCol="weighted_rating",
-                    predictionCol="prediction"
+                    predictionCol="prediction",
                 )
                 rmse = evaluator.evaluate(group_predictions)
 
                 # Calculate coverage
                 total = group_predictions.count()
-                predicted = group_predictions.filter(~col("prediction").isNull()).count()
+                predicted = group_predictions.filter(
+                    ~col("prediction").isNull()
+                ).count()
                 coverage = predicted / total if total > 0 else 0
 
                 metrics_by_group.append((group, rmse, coverage))

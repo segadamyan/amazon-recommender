@@ -10,8 +10,12 @@ from feature_engineering import FeatureEngineer
 from model_trainer import ModelTrainer
 from recommendation_generator import RecommendationGenerator
 from user_clustering import UserClusterer
-from utils import plot_rating_distribution, plot_temporal_trends, plot_avg_rating_by_verified, \
-    plot_review_length_distribution
+from utils import (
+    plot_rating_distribution,
+    plot_temporal_trends,
+    plot_avg_rating_by_verified,
+    plot_review_length_distribution,
+)
 
 DATA_PATH = os.path.join(".", "data", "All_Beauty.json")
 PROCESSED_DATA_PATH = os.path.join(".", "data", "processed_data")
@@ -47,17 +51,18 @@ def main():
 
     plot_rating_distribution(df_with_features, "plots/rating_distribution.png")
 
-    monthly_ratings = df_processed.withColumn("year", year("reviewDate")) \
-        .withColumn("month", month("reviewDate")) \
-        .groupBy("year", "month") \
-        .agg(
-        avg("rating").alias("avg_rating"),
-        count("rating").alias("review_count")
+    monthly_ratings = (
+        df_processed.withColumn("year", year("reviewDate"))
+        .withColumn("month", month("reviewDate"))
+        .groupBy("year", "month")
+        .agg(avg("rating").alias("avg_rating"), count("rating").alias("review_count"))
     )
 
     plot_temporal_trends(monthly_ratings, "plots/temporal_trends.png")
     plot_avg_rating_by_verified(df_with_features, "plots/avg_rating_by_verified.png")
-    plot_review_length_distribution(df_with_features, "plots/review_length_distribution.png")
+    plot_review_length_distribution(
+        df_with_features, "plots/review_length_distribution.png"
+    )
 
     indexed_df.write.mode("overwrite").parquet(PROCESSED_DATA_PATH)
     print(f"Processed data saved to {PROCESSED_DATA_PATH}")

@@ -11,40 +11,45 @@ class FeatureEngineer:
     def create_features(self, df):
         """Create advanced features for better recommendations"""
 
-        product_popularity = df.groupBy("asin") \
-            .agg(
+        product_popularity = df.groupBy("asin").agg(
             count("rating").alias("review_count"),
             avg("rating").alias("avg_rating"),
-            stddev("rating").alias("rating_stddev")
+            stddev("rating").alias("rating_stddev"),
         )
 
-        user_engagement = df.groupBy("reviewerID") \
-            .agg(
+        user_engagement = df.groupBy("reviewerID").agg(
             count("rating").alias("user_review_count"),
             avg("rating").alias("user_avg_rating"),
-            stddev("rating").alias("user_rating_stddev")
+            stddev("rating").alias("user_rating_stddev"),
         )
 
         df = df.join(product_popularity, on="asin", how="left")
         df = df.join(user_engagement, on="reviewerID", how="left")
 
         # Calculate Z-score for each rating to identify unusual ratings
-        df = df.withColumn("user_zscore",
-                           (col("rating") - col("user_avg_rating")) /
-                           when(col("user_rating_stddev").isNull() | (col("user_rating_stddev") == 0), 1)
-                           .otherwise(col("user_rating_stddev")))
+        df = df.withColumn(
+            "user_zscore",
+            (col("rating") - col("user_avg_rating"))
+            / when(
+                col("user_rating_stddev").isNull() | (col("user_rating_stddev") == 0), 1
+            ).otherwise(col("user_rating_stddev")),
+        )
 
-        df = df.withColumn("engagement_score",
-                           col("review_length") / 100 * 0.3 +
-                           col("user_review_count") / 10 * 0.3 +
-                           (1 - (col("recency") / 365)) * 0.4)
+        df = df.withColumn(
+            "engagement_score",
+            col("review_length") / 100 * 0.3
+            + col("user_review_count") / 10 * 0.3
+            + (1 - (col("recency") / 365)) * 0.4,
+        )
 
-        df = df.fillna({
-            "rating_stddev": 0,
-            "user_rating_stddev": 0,
-            "engagement_score": 0.5,
-            "sentiment_score": 0
-        })
+        df = df.fillna(
+            {
+                "rating_stddev": 0,
+                "user_rating_stddev": 0,
+                "engagement_score": 0.5,
+                "sentiment_score": 0,
+            }
+        )
 
         return df
 
@@ -59,10 +64,17 @@ class FeatureEngineer:
         indexed_df = item_indexer.transform(indexed_df)
 
         model_df = indexed_df.select(
-            "userId", "itemId", "rating", "weighted_rating",
-            "sentiment_score", "engagement_score", "user_zscore",
-            "review_count", "user_review_count",
-            "reviewerID", "asin"
+            "userId",
+            "itemId",
+            "rating",
+            "weighted_rating",
+            "sentiment_score",
+            "engagement_score",
+            "user_zscore",
+            "review_count",
+            "user_review_count",
+            "reviewerID",
+            "asin",
         )
 
         return model_df

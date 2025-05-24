@@ -3,6 +3,8 @@ from pyspark.ml.feature import VectorAssembler, MinMaxScaler
 from pyspark.ml.pipeline import Pipeline
 from pyspark.sql.functions import avg, count
 
+from config import CLUSTER_COUNT, RANDOM_SEED
+
 
 class UserClusterer:
     def __init__(self, spark):
@@ -17,12 +19,12 @@ class UserClusterer:
             avg("rating").alias("avg_rating"),
             avg("sentiment_score").alias("avg_sentiment"),
             avg("engagement_score").alias("avg_engagement"),
-            count("rating").alias("review_count")
+            count("rating").alias("review_count"),
         )
 
         assembler = VectorAssembler(
             inputCols=["avg_rating", "avg_sentiment", "avg_engagement", "review_count"],
-            outputCol="features"
+            outputCol="features",
         )
 
         scaler = MinMaxScaler(inputCol="features", outputCol="scaled_features")
@@ -34,11 +36,12 @@ class UserClusterer:
         k_values = range(2, 11)
 
         for k in k_values:
-            kmeans = KMeans(k=k, seed=42, featuresCol="scaled_features")
+            kmeans = KMeans(k=k, seed=RANDOM_SEED, featuresCol="scaled_features")
             model = kmeans.fit(scaled_data)
             wssse.append(model.summary.trainingCost)
+            print("Training cost for k=", k, " ", model.summary.trainingCost)
 
-        kmeans = KMeans(k=5, seed=42, featuresCol="scaled_features")
+        kmeans = KMeans(k=CLUSTER_COUNT, seed=RANDOM_SEED, featuresCol="scaled_features")
         model = kmeans.fit(scaled_data)
 
         user_clusters = model.transform(scaled_data)
@@ -46,7 +49,9 @@ class UserClusterer:
         user_clusters.write.mode("overwrite").parquet(output_path)
         print(f"User clusters saved to {output_path}")
 
-        cluster_counts = user_clusters.groupBy("prediction").count().orderBy("prediction")
+        cluster_counts = (
+            user_clusters.groupBy("prediction").count().orderBy("prediction")
+        )
         print("\nUser Cluster Distribution:")
         cluster_counts.show()
 
@@ -60,15 +65,21 @@ class UserClusterer:
         """Analyze the characteristics of each cluster"""
 
         df_with_clusters = df.join(
-            user_clusters.select("userId", "prediction").withColumnRenamed("prediction", "cluster"),
-            on="userId"
+            user_clusters.select("userId", "prediction").withColumnRenamed(
+                "prediction", "cluster"
+            ),
+            on="userId",
         )
 
-        cluster_ratings = df_with_clusters.groupBy("cluster").agg(
-            avg("rating").alias("avg_rating"),
-            avg("sentiment_score").alias("avg_sentiment"),
-            count("rating").alias("num_ratings")
-        ).orderBy("cluster")
+        cluster_ratings = (
+            df_with_clusters.groupBy("cluster")
+            .agg(
+                avg("rating").alias("avg_rating"),
+                avg("sentiment_score").alias("avg_sentiment"),
+                count("rating").alias("num_ratings"),
+            )
+            .orderBy("cluster")
+        )
 
         print("\nCluster Characteristics:")
         cluster_ratings.show()
